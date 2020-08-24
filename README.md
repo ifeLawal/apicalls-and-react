@@ -1,68 +1,75 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# React Github Jobs Site Using the Github API
+The idea behind this project is to recreate the github jobs page using the jobs,github API and react.js. We clean up the interface a little and focus using API calls with react.
 
-## Available Scripts
+There are three main divisions: setting up the API calls and sending the data to the app, loading that data to the app, and implementing user interactions (search, page selection, etc.)
 
-In the project directory, you can run:
+## Notes on setting up the API
+We utilize react hooks and axios, which come built into the create react app node modules.
 
-### `npm start`
+```javascript
+import { useReducer, useEffect } from 'react'
+import axios from 'axios'
+```
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+React hooks help us manage the state of the API calls and send the appropriate state of the data as we pull it using the axios HTTP request GET functionality.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+***
 
-### `npm test`
+Our reducer function sends through the state of our data, so we define the 3 main actions that occur / can occur as we retrieve the data (make request, get data, and error) and how state will look after those action calls. The dispatch sends the action and state to the reducer, this starts out as empty as we currently have no data, but gets updated when axios makes a GET data request.
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```javascript
+const [state, dispatch] = useReducer(reducer, { jobs: [], loading: true, error: false});
 
-### `npm run build`
+function reducer(state, action) {
+    switch(action.type) {
+        case ACTIONS.MAKE_REQUEST:
+            return {jobs: [], loading: true};
+        case ACTIONS.GET_DATA:
+            return {...state, loading: false, jobs: action.payload.jobs };
+        case ACTIONS.ERROR:
+            return {...state, loading: false, error: action.payload.error, jobs: []};
+        default:
+            return state;
+    }
+}
+```
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+This is where we update the empty dispatch. We also wrap the axios get HTTP request in a hook useEffect to cleanup data for the API call (the cleanup happens when we cancel our token). The axios get request pulls the data or throws an error and we send that through our dispatch to update our state appropriately. 
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+```javascript
+useEffect(() => {
+        const cancelToken = axios.CancelToken.source();
+        dispatch( {type: ACTIONS.MAKE_REQUEST});
+        axios.get(PROXY_URL, {
+            cancelToken: cancelToken.token,
+            params: {markdown: true, page: page, ...params }
+        })
+        .then(res => {
+            dispatch( {type:ACTIONS.GET_DATA, payload: {jobs: res.data}})
+        })
+        .catch(e => {
+            if(axios.isCancel(e)) {return}
+            dispatch( {type: ACTIONS.ERROR, payload:{error:  e}} )
+        });
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+        return () => {
+            cancelToken.cancel();
+        }
+    }, [params, page]);
+```
 
-### `npm run eject`
+One note, we set up a proxy within our package.json 
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```javascript
+"proxy": "https://jobs.github.com",
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+(right above the dependencies), this avoids cors request errors and has our axios.get request sent to jobs.github rather than to localhost:port while developing ([read more about  react app proxy here](https://create-react-app.dev/docs/proxying-api-requests-in-development/)). Also our **PROXY_URL**, inside of UseFetchJobs.js, for axios.get is set to the github jobs API GET path: '/positions.json'.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) and the awesome teachings of [Kyle from Web Dev Simplified](https://www.youtube.com/channel/UCFbNIlppjAuEX4znoulh0Cw)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Notes on rendering data to the page
 
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
